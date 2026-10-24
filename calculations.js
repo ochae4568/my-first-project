@@ -20,7 +20,9 @@ export function calculate(kind,v,phase='3',context={}) {
  for(const key of ['pf','target','loading','efficiency','utilization','maintenance'])if(key in v&&(v[key]<=0||v[key]>1))throw Error('역률·효율·비율은 0 초과 1 이하로 입력하세요.');
  for(const key of ['count','series'])if(key in v&&!Number.isInteger(v[key]))throw Error('수량은 정수로 입력하세요.');
  if('spare' in v&&v.spare<0)throw Error('여유율은 0 이상이어야 합니다.');
- const k=phase==='3'?Math.sqrt(3):1, wire=phase==='3'?Math.sqrt(3):2;
+ if(d.phase&&!['1','3','4'].includes(phase))throw Error('전원 방식을 선택하세요.');
+ const threePhase=phase==='3'||phase==='4';
+ const k=threePhase?Math.sqrt(3):1, wire=threePhase?Math.sqrt(3):2;
  const row=(label,value,unit)=>({label,value,unit}); let rows=[],formula='',note='';
  if(['current','feeder','motor'].includes(kind)){
  const i=v.power*1000/(k*v.voltage*v.pf*(v.efficiency??1));rows.push(row('계산 부하전류',i,'A'));formula='I = P × 1000 / (k × V × cosφ × η), 삼상 k=√3, 단상 k=1';
@@ -35,6 +37,15 @@ export function calculate(kind,v,phase='3',context={}) {
  else if(kind==='solar'){const voc=v.voc*(1+v.coefficient/100*(v.temperature-25));if(voc<=0)throw Error('온도 보정 후 전압이 양수가 되도록 입력하세요.');rows=[row('저온 스트링 Voc',voc*v.series,'V'),row('최대 DC 전압 대비 여유',v.limit-voc*v.series,'V')];formula='Voc(T) = Voc(STC) × [1 + β/100 × (T − 25)]; 스트링 Voc = Voc(T) × 직렬 수';note='음수 여유는 최대 전압 초과입니다. MPPT 범위·전류·병렬 구성·제조사 설계 조건은 별도 검토하세요.';}
  else if(kind==='material'){const length=v.length*v.count*(1+v.spare/100);rows=[row('총 케이블 길이',length,'m'),row('예상 자재비',length*v.price,'원')];formula='길이 = 경로 길이 × 경로 수 × (1 + 여유율/100); 금액 = 길이 × 단가';note='노무비·부가세·부속 자재는 제외합니다.';}
  if(['drop','feeder'].includes(kind))note+=' 구리 20°C 비저항 ρ=0.0175 Ω·mm²/m, 리액턴스 및 역률에 따른 위상 효과를 생략한 저항 기반 추정입니다. 허용 전압강하 판정은 하지 않습니다.';
+ if(d.phase){
+ const system=phase==='1'?'단상 2선식':phase==='3'?'삼상 3선식':'삼상 4선식';
+ note=`${system}. ${threePhase?'전압은 선간전압, 전력은 삼상 합계이며 평형 정현파 부하 기준입니다. ':''}`+note;
+ if(phase==='4'){
+ rows.push(row('상전압 (선–중성선)',v.voltage/Math.sqrt(3),'V'));
+ if(['feeder','drop'].includes(kind)){const lineDrop=rows.find(r=>r.label==='추정 전압강하');lineDrop.label='선간 전압강하';rows.push(row('상 전압강하 (선–중성선)',lineDrop.value/Math.sqrt(3),'V'));formula+='; ΔV상 = ΔV선간 / √3';}
+ note+=' 삼상 4선식의 평형 부하에서는 중성선 기본파 전류를 0으로 가정합니다. 불평형 부하·고조파·중성선 전압강하 및 중성선 굵기는 별도 검토하세요. 단상 분기 부하는 단상 2선식으로 상전압을 입력하세요.';
+ }
+ }
  if(rows.some(r=>!Number.isFinite(r.value)))throw Error('계산 범위를 벗어났습니다. 입력값을 확인하세요.');
  return {rows,formula,note};
 }

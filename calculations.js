@@ -1,3 +1,4 @@
+import {automaticDefinition,calculateAutomatic} from './automatic.js';
 import {engineeringDefinitions, calculateEngineering} from './engineering.js';
 export const definitions = {
  feeder: { title:'간선 통합 계산', desc:'부하전류와 배선의 전압강하를 한 번에 확인하세요.', fields:[['power','부하 유효전력','kW',30],['voltage','전압','V',380],['pf','역률','0~1',0.9],['length','편도 배선거리','m',50],['area','전선 단면적','mm²',16]], phase:true },
@@ -12,8 +13,9 @@ export const definitions = {
  solar:{title:'태양광 스트링',desc:'온도계수를 반영한 저온 개방전압을 확인합니다.',fields:[['voc','모듈 개방전압 Voc','V',49],['coefficient','Voc 온도계수 (부호 포함)','%/°C',-0.28],['temperature','최저 모듈 온도','°C',-10],['series','직렬 모듈 수','개',12],['limit','인버터 최대 DC 전압','V',1000]]},
  material:{title:'케이블 물량·금액',desc:'경로 수와 여유율을 반영한 자재 금액입니다.',fields:[['length','경로당 길이','m',50],['count','동일 경로 수','개',3],['spare','여유율','%',10],['price','미터당 단가','원/m',5000]]}
 };
-Object.assign(definitions,engineeringDefinitions);
+Object.assign(definitions,engineeringDefinitions,{automatic:automaticDefinition});
 export function calculate(kind,v,phase='3',context={}) {
+ if(kind==='automatic')return calculateAutomatic(v,phase,context,calculateEngineering);
  if(engineeringDefinitions[kind])return calculateEngineering(kind,v,{...context,phase});
  const d=definitions[kind]; if(!d)throw Error('계산 항목을 선택하세요.');
  for(const [key,label] of d.fields){if(!Number.isFinite(v[key]))throw Error(`${label} 값을 입력하세요.`); if(!['coefficient','temperature','spare'].includes(key)&&v[key]<=0)throw Error(`${label}은 0보다 커야 합니다.`);}

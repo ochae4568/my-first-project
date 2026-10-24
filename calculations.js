@@ -14,7 +14,7 @@ export const definitions = {
 };
 Object.assign(definitions,engineeringDefinitions);
 export function calculate(kind,v,phase='3',context={}) {
- if(engineeringDefinitions[kind])return calculateEngineering(kind,v,context);
+ if(engineeringDefinitions[kind])return calculateEngineering(kind,v,{...context,phase});
  const d=definitions[kind]; if(!d)throw Error('계산 항목을 선택하세요.');
  for(const [key,label] of d.fields){if(!Number.isFinite(v[key]))throw Error(`${label} 값을 입력하세요.`); if(!['coefficient','temperature','spare'].includes(key)&&v[key]<=0)throw Error(`${label}은 0보다 커야 합니다.`);}
  for(const key of ['pf','target','loading','efficiency','utilization','maintenance'])if(key in v&&(v[key]<=0||v[key]>1))throw Error('역률·효율·비율은 0 초과 1 이하로 입력하세요.');
